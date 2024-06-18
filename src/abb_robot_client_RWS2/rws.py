@@ -33,7 +33,7 @@ class ABBException(Exception):
         super(ABBException, self).__init__(message)
         self.code=code
 
-class RAPIDExecutionState(NamedTuple):
+class RAPIDExecutionState(NamedTuple):#
     """
     Execution state of RAPID tasks on controller. See :meth:`.RWS.get_execution_state()`
     """
@@ -42,7 +42,7 @@ class RAPIDExecutionState(NamedTuple):
     cycle: Any
     """Current controller cycle state"""
 
-class EventLogEntry(NamedTuple):
+class EventLogEntry(NamedTuple):#
     """Entry within an event log. See :meth:`.RWS.read_event_log()`"""
     seqnum: int
     """Sequence number of the entry"""
@@ -50,6 +50,8 @@ class EventLogEntry(NamedTuple):
     """Message type of the entry. 1 for info, 2 for warning, 3 for error"""
     code: int
     """The error code of the entry"""
+    src_name: str
+    """The elog message source"""
     tstamp: datetime.datetime 
     """Entry timestamp in controller clock"""
     args: List[Any]
@@ -72,7 +74,7 @@ class EventLogEntryEvent(NamedTuple):
     seqnum: int
     """seqnum of created event log entry"""
 
-class TaskState(NamedTuple):
+class TaskState(NamedTuple):#
     """
     Current state of task running on controller. See :meth:`.RWS.get_tasks()`
     """
@@ -89,14 +91,14 @@ class TaskState(NamedTuple):
     motiontask: bool
     """True if the task is a motion task"""
 
-class JointTarget(NamedTuple):
+class JointTarget(NamedTuple):#
     """Joint target in degrees or millimeters"""
     robax: np.array
     """Robot axes positions. Six entry array"""
     extax: np.array
     """Extra axes positions. Six entry array"""
 
-class RobTarget(NamedTuple):
+class RobTarget(NamedTuple):#
     """Robtarget"""
     trans: np.array
     """Translation in millimeters. Three entry array"""
@@ -107,7 +109,7 @@ class RobTarget(NamedTuple):
     extax: np.array
     """Extra axes positions. Six entry array"""
 
-class IpcMessage(NamedTuple):
+class IpcMessage(NamedTuple):#
     """IPC queue message. Also used for RMQ. See :meth:`.RMQ.try_create_ipc_queue()`"""
     data: str
     """Message data encoded as string"""
@@ -127,12 +129,12 @@ class Signal(NamedTuple):
     lvalue: str
     """Logical value of the signal"""
 
-class ControllerState(NamedTuple):
+class ControllerState(NamedTuple):#
     """Controller state. See :meth:`.RWS.get_controller_state()`"""
     state: str
     """The controller state"""
 
-class OperationalMode(NamedTuple):
+class OperationalMode(NamedTuple):#
     """Operational mode. See :meth:`.RWS.get_operation_mode()`"""
     mode: str
     """The operational mode"""
@@ -140,7 +142,7 @@ class OperationalMode(NamedTuple):
 class VariableValue(NamedTuple):
     """RAPID variable value"""
     name: str
-    """The name of the RAPId variable"""
+    """The name of the RAPID variable"""
     value: str
     """The variable value encoded as string"""
     task: str = None
@@ -326,7 +328,7 @@ class RWS:
         res_json = self._do_get("ctrl/$RAMDISK")
         return res_json["_embedded"]["_state"][0]["_value"]
 
-    def get_execution_state(self) -> RAPIDExecutionState:
+    def get_execution_state(self) -> RAPIDExecutionState: #
         """
         Get the RAPID execution state
 
@@ -338,7 +340,7 @@ class RWS:
         cycle=state["cycle"]
         return RAPIDExecutionState(ctrlexecstate, cycle)
     
-    def get_controller_state(self) -> str:
+    def get_controller_state(self) -> str:#
         """
         Get the controller state. The controller state can have the following values:
 
@@ -348,15 +350,15 @@ class RWS:
 
         :return: The controller state
         """
-        res_json = self._do_get("rw/panel/ctrlstate")
+        res_json = self._do_get("rw/panel/ctrl-state")
         state = res_json["_embedded"]["_state"][0]
         return state['ctrlstate']
 
-    def set_controller_state(self, ctrl_state):
+    def set_controller_state(self, ctrl_state): #TODO: haven't been able to get this working with postman
         payload = {"ctrl-state": ctrl_state}
-        res=self._do_post("rw/panel/ctrlstate?action=setctrlstate", payload)
+        res=self._do_post("rw/panel/ctrl-state?action=setctrlstate", payload)
     
-    def get_operation_mode(self) -> str:
+    def get_operation_mode(self) -> str:#
         """
         Get the controller operational mode. The controller operational mode can have the following values:
 
@@ -540,6 +542,7 @@ class RWS:
             seqnum = int(s["_title"].split("/")[-1])
             msg_type=int(s["msgtype"])
             code=int(s["code"])
+            src_name=s["src-name"]
             tstamp=datetime.datetime.strptime(s["tstamp"], '%Y-%m-%d T  %H:%M:%S')
             title=s["title"]
             desc=s["desc"]
@@ -555,7 +558,7 @@ class RWS:
             o.append(EventLogEntry(seqnum,msg_type,code,tstamp,args,title,desc,conseqs,causes,actions))
         return o
 
-    def get_tasks(self) -> List[TaskState]:
+    def get_tasks(self) -> List[TaskState]:#
         """
         Get controller tasks and task state
 
@@ -583,7 +586,7 @@ class RWS:
         
         return o
 
-    def get_jointtarget(self, mechunit="ROB_1") -> JointTarget:
+    def get_jointtarget(self, mechunit="ROB_1") -> JointTarget:#
         """
         Get the current jointtarget for specified mechunit
 
@@ -601,7 +604,7 @@ class RWS:
      
         return JointTarget(robjoint,extjoint)
         
-    def get_robtarget(self, mechunit='ROB_1', tool='tool0', wobj='wobj0', coordinate='Base') -> RobTarget:
+    def get_robtarget(self, mechunit='ROB_1', tool='tool0', wobj='wobj0', coordinate='Base') -> RobTarget:#
         """
         Get the current robtarget (cartesian pose) for the specified mechunit
 
@@ -947,7 +950,7 @@ class RWS:
         for r in resources:
             payload_ind += 1
             if r.resource_type == SubscriptionResourceType.ControllerState:
-                payload[f"{payload_ind}"] = "/rw/panel/ctrlstate"
+                payload[f"{payload_ind}"] = "/rw/panel/ctrl-state"
             elif r.resource_type == SubscriptionResourceType.OperationalMode:
                 payload[f"{payload_ind}"] = "/rw/panel/opmode"
             elif r.resource_type == SubscriptionResourceType.ExecutionState:
@@ -962,7 +965,7 @@ class RWS:
                         var1 = f"{task}/{var_name}"
                     else:
                         var1 = var_name
-                payload[f"{payload_ind}"] = f"/rw/rapid/symbol/data/RAPID/{var1};value"
+                payload[f"{payload_ind}"] = f"/rw/rapid/symbol/{var1}/data;value" #TODO: test this change
             elif r.resource_type == SubscriptionResourceType.IpcQueue:
                 payload[f"{payload_ind}"] = f'/rw/dipc/{r.param}'
             elif r.resource_type == SubscriptionResourceType.Elog:
