@@ -199,7 +199,7 @@ class RWS:
             username = 'Default User'
         if password is None:
             password = 'robotics'
-        self.auth=requests.auth.HTTPDigestAuth(username, password)
+        self.auth=requests.auth.HTTPBasicAuth(username, password) #RWS 2.0 requires basic auth
         self._session=requests.Session()
         self._rmmp_session=None
         self._rmmp_session_t=None
@@ -231,7 +231,7 @@ class RWS:
 
     def _process_response(self, response):        
         
-        if (response.status_code == 503):
+        if (response.status_code == 500):
             raise Exception("Robot returning 500 Internal Server Error")
 
         if (response.status_code == 503):
@@ -262,7 +262,7 @@ class RWS:
         
         raise ABBException(error_message, error_code)
 
-    def start(self, cycle: Optional[str]='asis',tasks: Optional[List[str]]=['T_ROB1']):
+    def start(self, cycle: Optional[str]='asis',tasks: Optional[List[str]]=['T_ROB1']):#
         """
         Start one or more RAPID tasks
 
@@ -286,7 +286,7 @@ class RWS:
                     self.deactivate_task(rob_task.name)
 
         payload={"regain": "continue", "execmode": "continue" , "cycle": cycle, "condition": "none", "stopatbp": "disabled", "alltaskbytsp": "true"}
-        res=self._do_post("rw/rapid/execution?action=start", payload)
+        res=self._do_post("rw/rapid/execution/start", payload)
 
     def activate_task(self, task: str):
         """
@@ -295,7 +295,7 @@ class RWS:
         :param task: The name of the task to activate
         """
         payload={}
-        self._do_post(f"rw/rapid/tasks/{task}?action=activate",payload)
+        self._do_post(f"rw/rapid/tasks/{task}/activate",payload) #TODO: validate this change
 
     def deactivate_task(self, task: str) -> None:
         """
@@ -304,22 +304,22 @@ class RWS:
         :param task: The name of the task to activate
         """
         payload={}
-        self._do_post(f"rw/rapid/tasks/{task}?action=deactivate",payload)
+        self._do_post(f"rw/rapid/tasks/{task}/deactivate",payload)#TODO: validate this change
 
-    def stop(self):
+    def stop(self):#
         """
         Stop RAPID execution of normal tasks
         """
         payload={"stopmode": "stop"}
-        res=self._do_post("rw/rapid/execution?action=stop", payload)
+        res=self._do_post("rw/rapid/execution/stop", payload)
 
     def resetpp(self):
         """
         Reset RAPID program pointer to main in normal tasks
         """
-        res=self._do_post("rw/rapid/execution?action=resetpp")
+        res=self._do_post("rw/rapid/execution/resetpp") #TODO: this may need a mastership=implicit header
 
-    def get_ramdisk_path(self) -> str:
+    def get_ramdisk_path(self) -> str: #TODO: I have know idea what this is for or how to replicate it
         """
         Get the path of the RAMDISK variable on the controller
 
@@ -354,7 +354,7 @@ class RWS:
         state = res_json["_embedded"]["_state"][0]
         return state['ctrlstate']
 
-    def set_controller_state(self, ctrl_state): #TODO: haven't been able to get this working with postman
+    def set_controller_state(self, ctrl_state): #
         payload = {"ctrl-state": ctrl_state}
         res=self._do_post("rw/panel/ctrl-state?action=setctrlstate", payload)
     
@@ -372,7 +372,7 @@ class RWS:
         state = res_json["_embedded"]["_state"][0]
         return state["opmode"]
     
-    def get_digital_io(self, signal: str, network: str='Local', unit: str='DRV_1') -> int:
+    def get_digital_io(self, signal: str, network: str='Local', unit: str='DRV_1') -> int:#
         """
         Get the value of a digital IO signal.
 
@@ -385,7 +385,7 @@ class RWS:
         state = res_json["_embedded"]["_state"][0]["lvalue"]
         return int(state)
     
-    def set_digital_io(self, signal: str, value: Union[bool,int], network: str='Local', unit: str='DRV_1'):
+    def set_digital_io(self, signal: str, value: Union[bool,int], network: str='Local', unit: str='DRV_1'): #TODO: validate that this works
         """
         Set the value of an digital IO signal.
 
@@ -396,7 +396,7 @@ class RWS:
         """
         lvalue = '1' if bool(value) else '0'
         payload={'lvalue': lvalue}
-        res=self._do_post("rw/iosystem/signals/" + network + "/" + unit + "/" + signal + "?action=set", payload)
+        res=self._do_post("rw/iosystem/signals/" + network + "/" + unit + "/" + signal + "set-value", payload)
 
     def get_analog_io(self, signal: str, network: str='Local', unit: str='DRV_1') -> float:
         """
@@ -411,7 +411,7 @@ class RWS:
         state = res_json["_embedded"]["_state"][0]["lvalue"]
         return float(state)
     
-    def set_analog_io(self, signal: str, value: Union[int,float], network: str='Local', unit: str='DRV_1'):
+    def set_analog_io(self, signal: str, value: Union[int,float], network: str='Local', unit: str='DRV_1'):#TODO: validate that this works
         """
         Set the value of an analog IO signal.
 
@@ -421,7 +421,7 @@ class RWS:
         :param unit: The drive unit of the signal. The default `DRV_1` will work for most signals.
         """
         payload={"mode": "value",'lvalue': value}
-        res=self._do_post("rw/iosystem/signals/" + network + "/" + unit + "/" + signal + "?action=set", payload)
+        res=self._do_post("rw/iosystem/signals/" + network + "/" + unit + "/" + signal + "/set-value", payload)
     
     def get_rapid_variables(self, task: str="T_ROB1") -> List[str]:
         """
@@ -442,11 +442,11 @@ class RWS:
             "posl": "0",
             "posc": "0"
         }
-        res_json = self._do_post(f"rw/rapid/symbols?action=search-symbols", payload)
+        res_json = self._do_post(f"rw/rapid/symbols/search", payload)
         state = res_json["_embedded"]["_state"]
         return state
 
-    def get_rapid_variable(self, var: str, task: str = "T_ROB1") -> str:
+    def get_rapid_variable(self, var: str, task: str = "T_ROB1") -> str:#
         """
         Get value of a RAPID pers variable
 
