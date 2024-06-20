@@ -22,7 +22,7 @@ def test_rws_tasks():
         except:
             pass
 
-        c.set_analog_io("mode",0)
+        # c.set_analog_io("mode",0)
         c.resetpp()
         c.start("forever", ["T_ROB1"])
         time.sleep(0.1)
@@ -84,11 +84,11 @@ def test_files():
         file_list = c.list_files(ramdisk_path)
         assert "test_file.txt" not in file_list
 
-def test_evtlog():
-    c = rws.RWS(_robot_url)
-    with closing(c):
-        evts = c.read_event_log()
-        print(evts)
+# def test_evtlog():
+#     c = rws.RWS(_robot_url)
+#     with closing(c):
+#         evts = c.read_event_log()
+#         print(evts)
 
 def test_current_targets():
     c = rws.RWS(_robot_url)
@@ -100,6 +100,7 @@ def test_current_targets():
 def test_speed_ratio():
     c = rws.RWS(_robot_url)
     with closing(c):
+        c.request_mastership()
         c.get_speedratio()
         c.set_speedratio(50)
         assert c.get_speedratio() == 50

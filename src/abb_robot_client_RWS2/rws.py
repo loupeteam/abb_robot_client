@@ -241,7 +241,7 @@ class RWS:
             return None
 
         response_json = None
-        if response.headers["Content-Type"] == 'application/json' and len(response.content) > 0:
+        if response.headers["Content-Type"] == 'application/hal+json;v=2.0' and len(response.content) > 0:
             try:            
                 response_json = response.json()
             except:
@@ -256,7 +256,7 @@ class RWS:
         if response_json is None:
             raise Exception("Robot returning HTTP error " + str(response.status_code))        
         
-        status = response_json["_embedded"]["status"]
+        status = response_json["status"]
         error_code=int(status["code"])
         error_message=status.get('msg',"Received error from ABB robot: " + str(error_code))
         
@@ -295,7 +295,7 @@ class RWS:
         :param task: The name of the task to activate
         """
         payload={}
-        self._do_post(f"rw/rapid/tasks/{task}/activate",payload) #TODO: validate this change
+        self._do_post(f"rw/rapid/tasks/{task}/activate",payload)
 
     def deactivate_task(self, task: str) -> None:
         """
@@ -304,7 +304,7 @@ class RWS:
         :param task: The name of the task to activate
         """
         payload={}
-        self._do_post(f"rw/rapid/tasks/{task}/deactivate",payload)#TODO: validate this change
+        self._do_post(f"rw/rapid/tasks/{task}/deactivate",payload)
 
     def stop(self):#
         """
@@ -317,7 +317,7 @@ class RWS:
         """
         Reset RAPID program pointer to main in normal tasks
         """
-        res=self._do_post("rw/rapid/execution/resetpp") #TODO: this may need a mastership=implicit header
+        res=self._do_post("rw/rapid/execution/resetpp") 
 
     def get_ramdisk_path(self) -> str: #TODO: I have know idea what this is for or how to replicate it
         """
@@ -326,7 +326,7 @@ class RWS:
         :return: The RAMDISK path
         """
         res_json = self._do_get("ctrl/$RAMDISK")
-        return res_json["_embedded"]["_state"][0]["_value"]
+        return res_json["state"][0]["value"]
 
     def get_execution_state(self) -> RAPIDExecutionState: #
         """
@@ -335,7 +335,8 @@ class RWS:
         :return: The RAPID execution state
         """
         res_json = self._do_get("rw/rapid/execution")
-        state = res_json["_embedded"]["_state"][0]
+        print(res_json)
+        state = res_json["state"][0]
         ctrlexecstate=state["ctrlexecstate"]
         cycle=state["cycle"]
         return RAPIDExecutionState(ctrlexecstate, cycle)
@@ -351,7 +352,7 @@ class RWS:
         :return: The controller state
         """
         res_json = self._do_get("rw/panel/ctrl-state")
-        state = res_json["_embedded"]["_state"][0]
+        state = res_json["state"][0]
         return state['ctrlstate']
 
     def set_controller_state(self, ctrl_state): #
@@ -369,7 +370,7 @@ class RWS:
         :return: The controller operational mode.
         """
         res_json = self._do_get("rw/panel/opmode")        
-        state = res_json["_embedded"]["_state"][0]
+        state = res_json["state"][0]
         return state["opmode"]
     
     def get_digital_io(self, signal: str, network: str='Local', unit: str='DRV_1') -> int:#
@@ -382,10 +383,10 @@ class RWS:
         :return: The value of the signal. Typically 1 for ON and 0 for OFF
         """
         res_json = self._do_get("rw/iosystem/signals/" + network + "/" + unit + "/" + signal)
-        state = res_json["_embedded"]["_state"][0]["lvalue"]
+        state = res_json["_embedded"]["resources"][0]["lvalue"]
         return int(state)
     
-    def set_digital_io(self, signal: str, value: Union[bool,int], network: str='Local', unit: str='DRV_1'): #TODO: validate that this works
+    def set_digital_io(self, signal: str, value: Union[bool,int], network: str='Local', unit: str='DRV_1'): #TODO: Change defaults?
         """
         Set the value of an digital IO signal.
 
@@ -408,10 +409,10 @@ class RWS:
         :return: The value of the signal
         """
         res_json = self._do_get("rw/iosystem/signals/" + network + "/" + unit + "/" + signal)
-        state = res_json["_embedded"]["_state"][0]["lvalue"]
+        state = res_json["_embedded"]["resources"][0]["lvalue"]
         return float(state)
     
-    def set_analog_io(self, signal: str, value: Union[int,float], network: str='Local', unit: str='DRV_1'):#TODO: validate that this works
+    def set_analog_io(self, signal: str, value: Union[int,float], network: str='Local', unit: str='DRV_1'):#TODO: Change defaults?
         """
         Set the value of an analog IO signal.
 
@@ -423,7 +424,7 @@ class RWS:
         payload={"mode": "value",'lvalue': value}
         res=self._do_post("rw/iosystem/signals/" + network + "/" + unit + "/" + signal + "/set-value", payload)
     
-    def get_rapid_variables(self, task: str="T_ROB1") -> List[str]:#TODO: this return value might be different
+    def get_rapid_variables(self, task: str="T_ROB1") -> List[str]:#
         """
         Get a list of the persistent variables in a task
 
@@ -443,7 +444,7 @@ class RWS:
             "posc": "0"
         }
         res_json = self._do_post(f"rw/rapid/symbols/search", payload)
-        state = res_json["_embedded"]["_state"]
+        state = res_json["state"]
         return state
 
     def get_rapid_variable(self, var: str, task: str = "T_ROB1") -> str:#
@@ -459,7 +460,7 @@ class RWS:
         else:
             var1 = var
         res_json = self._do_get("rw/rapid/symbol/data/RAPID/" + var1 +"/data")
-        state = res_json["_embedded"]["_state"][0]["value"]
+        state = res_json["state"][0]["value"]
         return state
     
     def set_rapid_variable(self, var: str, value: str, task: str = "T_ROB1"):#
@@ -485,7 +486,7 @@ class RWS:
         :return: The file bytes
         """
         url="/".join([self.base_url, "fileservice", filename])
-        res=self._session.get(url, auth=self.auth)
+        res=self._session.get(url, auth=self.auth, verify=False, headers={"Accept":"application/hal+json;v=2.0"})
         if not res.ok:
             raise Exception(f"File not found {filename}")
         try:            
@@ -501,7 +502,7 @@ class RWS:
         :param contents: The file content bytes
         """
         url="/".join([self.base_url, "fileservice" , filename])
-        res=self._session.put(url, contents, auth=self.auth)
+        res=self._session.put(url, contents, auth=self.auth, verify=False, headers={"Accept":"application/hal+json;v=2.0","Content-Type":"application/x-www-form-urlencoded;v=2.0"})
         if not res.ok:
             raise Exception(res.reason)
         res.close()
@@ -513,7 +514,7 @@ class RWS:
         :param filename: The filename to delete
         """
         url="/".join([self.base_url, "fileservice" , filename])
-        res=self._session.delete(url, auth=self.auth)
+        res=self._session.delete(url, auth=self.auth, verify=False, headers={"Accept":"application/hal+json;v=2.0"})
         res.close()
 
     def list_files(self, path: str) -> List[str]:
@@ -523,8 +524,8 @@ class RWS:
         :param path: The path to list
         :return: The filenames in the path
         """
-        res_json = self._do_get("fileservice/" + str(path) + "")
-        state = res_json["_embedded"]["_state"]
+        res_json = self._do_get("fileservice/" + str(path) + "", verify=False, headers={"Accept":"application/hal+json;v=2.0"})
+        state = res_json["state"]
         return [f["_title"] for f in state]
 
     def read_event_log(self, elog: int=0) -> List[EventLogEntry]:#TODO: this matches the doc spec but postman isn't returning some of these members...
@@ -536,13 +537,13 @@ class RWS:
         """
         o=[]
         res_json = self._do_get("rw/elog/" + str(elog) + "/?lang=en")
-        state = res_json["_embedded"]["_state"]
+        resources = res_json["_embedded"]["resources"]
         
-        for s in state:
+        for s in resources:
             seqnum = int(s["_title"].split("/")[-1])
             msg_type=int(s["msgtype"])
             code=int(s["code"])
-            src_name=s["src-name"]
+            # src_name=s["src-name"]
             tstamp=datetime.datetime.strptime(s["tstamp"], '%Y-%m-%d T  %H:%M:%S')
             title=s["title"]
             desc=s["desc"]
@@ -566,7 +567,7 @@ class RWS:
         """
         o = {}
         res_json = self._do_get("rw/rapid/tasks")
-        state = res_json["_embedded"]["_state"]
+        state = res_json["state"]
                 
         for s in state:
             name=s["name"]
@@ -594,7 +595,7 @@ class RWS:
         :return: The current jointtarget
         """
         res_json=self._do_get("rw/motionsystem/mechunits/" + mechunit + "/jointtarget")
-        state = res_json["_embedded"]["_state"][0]
+        state = res_json["state"][0]
         if not state["_type"] == "ms-jointtarget":
             raise Exception("Invalid jointtarget type")
         robjoint=np.array([state["rax_1"], state["rax_2"], state["rax_3"], state["rax_4"], state["rax_5"], 
@@ -616,14 +617,14 @@ class RWS:
 
         """
         res_json=self._do_get(f"rw/motionsystem/mechunits/{mechunit}/robtarget?tool={tool}&wobj={wobj}&coordinate={coordinate}")
-        state = res_json["_embedded"]["_state"][0]
+        state = res_json["state"][0]
         if not state["_type"] == "ms-robtargets":
             raise Exception("Invalid robtarget type")
         trans=np.array([state["x"], state["y"], state["z"]], dtype=np.float64)
         rot=np.array([state["q1"], state["q2"], state["q3"], state["q4"]], dtype=np.float64)
         robconf=np.array([state["cf1"],state["cf4"],state["cf6"],state["cfx"]], dtype=np.float64)
-        extax=np.array([state["eaxa"], state["eaxb"], state["eaxc"], state["eaxd"], state["eaxe"], 
-            state["eaxf"]], dtype=np.float64)
+        extax=np.array([state["eax_a"], state["eax_b"], state["eax_c"], state["eax_d"], state["eax_e"], 
+            state["eax_f"]], dtype=np.float64)
         return RobTarget(trans,rot,robconf,extax)
     
     def _rws_value_to_jointtarget(self, val):
@@ -761,7 +762,7 @@ class RWS:
             timeout_str="&timeout=" + str(timeout)
         
         res_json=self._do_get("rw/dipc/" + queue_name + timeout_str)
-        for state in res_json["_embedded"]["_state"]:
+        for state in res_json["state"]:
             if not state["_type"] == "dipc-read-li":
                 raise Exception("Invalid IPC message type")
      
@@ -778,7 +779,7 @@ class RWS:
         :return: The current speed ratio between 0% - 100%
         """
         res_json=self._do_get(f"rw/panel/speedratio")
-        state = res_json["_embedded"]["_state"][0]
+        state = res_json["state"][0]
         if not state["_type"] == "pnl-speedratio":
             raise Exception("Invalid speedratio type")
         return float(state["speedratio"])
@@ -849,7 +850,7 @@ class RWS:
         while time.time() - t1 < timeout:
             
             res_json=self._do_get('users/rmmp/poll?json=1')
-            state = res_json["_embedded"]["_state"][0]
+            state = res_json["state"][0]
             if not state["_type"] == "user-rmmp-poll":
                 raise Exception("Invalid rmmp poll type")
             status = state["status"]
@@ -894,7 +895,7 @@ class RWS:
                 
         res=rmmp_session.get(url, auth=self.auth)
         res_json=self._process_response(res)
-        state = res_json["_embedded"]["_state"][0]
+        state = res_json["state"][0]
         if not state["_type"] == "user-rmmp-poll":
             raise Exception("Invalid rmmp poll type")
                 
