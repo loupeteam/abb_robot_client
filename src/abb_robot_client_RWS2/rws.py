@@ -908,6 +908,17 @@ class RWS:
        
         return state["status"] == "GRANTED"
 
+    def request_mastership(self):
+        """
+        Request mastership on edit and motion domains
+        """
+        self._do_post('rw/mastership/request')
+
+    def release_mastership(self):
+        """
+        Release mastership on edit and motion domains
+        """
+        self._do_post('rw/mastership/release')
 
     def subscribe(self, resources: List[SubscriptionResourceRequest], handler: Callable[[Any],None]) -> "RWSSubscription":
         """
