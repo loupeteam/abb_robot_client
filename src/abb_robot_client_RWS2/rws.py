@@ -193,7 +193,7 @@ class RWS:
     :param username: The HTTP username for the robot. Defaults to 'Default User'
     :param password: The HTTP password for the robot. Defaults to 'robotics'
     """
-    def __init__(self, base_url: str='http://127.0.0.1:80', username: str=None, password: str=None):
+    def __init__(self, base_url: str='https://127.0.0.1:80', username: str=None, password: str=None):
         self.base_url=base_url
         if username is None:
             username = 'Default User'
@@ -210,7 +210,7 @@ class RWS:
             url += "&json=1"
         else:
             url += "?json=1"
-        res=self._session.get(url, auth=self.auth)
+        res=self._session.get(url, auth=self.auth, verify=False, headers={"Accept":"application/hal+json;v=2.0"})
         try:            
             return self._process_response(res)
         finally:
@@ -223,7 +223,7 @@ class RWS:
             url += "&json=1"
         else:
             url += "?json=1"
-        res=self._session.post(url, data=payload, auth=self.auth)
+        res=self._session.post(url, data=payload, auth=self.auth, verify=False, headers={"Accept":"application/hal+json;v=2.0","Content-Type":"application/x-www-form-urlencoded;v=2.0"})
         try:
             return self._process_response(res)
         finally:
@@ -423,7 +423,7 @@ class RWS:
         payload={"mode": "value",'lvalue': value}
         res=self._do_post("rw/iosystem/signals/" + network + "/" + unit + "/" + signal + "/set-value", payload)
     
-    def get_rapid_variables(self, task: str="T_ROB1") -> List[str]:
+    def get_rapid_variables(self, task: str="T_ROB1") -> List[str]:#TODO: this return value might be different
         """
         Get a list of the persistent variables in a task
 
@@ -458,11 +458,11 @@ class RWS:
             var1 = f"{task}/{var}"
         else:
             var1 = var
-        res_json = self._do_get("rw/rapid/symbol/data/RAPID/" + var1)
+        res_json = self._do_get("rw/rapid/symbol/data/RAPID/" + var1 +"/data")
         state = res_json["_embedded"]["_state"][0]["value"]
         return state
     
-    def set_rapid_variable(self, var: str, value: str, task: str = "T_ROB1"):
+    def set_rapid_variable(self, var: str, value: str, task: str = "T_ROB1"):#
         """
         Set value of a RAPID pers variable
 
@@ -475,7 +475,7 @@ class RWS:
             var1 = f"{task}/{var}"
         else:
             var1 = var
-        res=self._do_post("rw/rapid/symbol/data/RAPID/" + var1 + "?action=set", payload)
+        res=self._do_post("rw/rapid/symbol/data/RAPID/" + var1 + "/data", payload)
         
     def read_file(self, filename: str) -> bytes:
         """
@@ -527,7 +527,7 @@ class RWS:
         state = res_json["_embedded"]["_state"]
         return [f["_title"] for f in state]
 
-    def read_event_log(self, elog: int=0) -> List[EventLogEntry]:
+    def read_event_log(self, elog: int=0) -> List[EventLogEntry]:#TODO: this matches the doc spec but postman isn't returning some of these members...
         """
         Read the controller event log
 
@@ -745,7 +745,7 @@ class RWS:
         """
         self.set_rapid_variable(var, "[" + ','.join([str(s) for s in val]) + "]", task)
 
-    def read_ipc_message(self, queue_name: str, timeout: float=0) -> List[IpcMessage]:
+    def read_ipc_message(self, queue_name: str, timeout: float=0) -> List[IpcMessage]:#
         """
         Read IPC message. IPC is used to communicate with RMQ in controller tasks. Create IPC using 
         try_create_ipc_queue().
@@ -760,7 +760,7 @@ class RWS:
         if timeout > 0:
             timeout_str="&timeout=" + str(timeout)
         
-        res_json=self._do_get("rw/dipc/" + queue_name + "/?action=dipc-read" + timeout_str)
+        res_json=self._do_get("rw/dipc/" + queue_name + timeout_str)
         for state in res_json["_embedded"]["_state"]:
             if not state["_type"] == "dipc-read-li":
                 raise Exception("Invalid IPC message type")
@@ -771,7 +771,7 @@ class RWS:
             #o.append(RAPIDEventLogEntry(msg_type,code,tstamp,args,title,desc,conseqs,causes,actions))
         return o
     
-    def get_speedratio(self) -> float:
+    def get_speedratio(self) -> float:#
         """
         Get the current speed ratio
 
@@ -783,7 +783,7 @@ class RWS:
             raise Exception("Invalid speedratio type")
         return float(state["speedratio"])
     
-    def set_speedratio(self, speedratio: float):
+    def set_speedratio(self, speedratio: float):#
         """
         Set the current speed ratio
 
@@ -793,7 +793,7 @@ class RWS:
         self._do_post(f"rw/panel/speedratio?action=setspeedratio", payload)
         
     
-    def send_ipc_message(self, target_queue: str, data: str, queue_name: str, cmd: int=111, userdef: int=1, msgtype: int=1 ):
+    def send_ipc_message(self, target_queue: str, data: str, queue_name: str, cmd: int=111, userdef: int=1, msgtype: int=1 ):#TODO: test this change
         """
         Send an IPC message to the specified queue
 
@@ -806,38 +806,37 @@ class RWS:
         """
         payload={"dipc-src-queue-name": queue_name, "dipc-cmd": str(cmd), "dipc-userdef": str(userdef), \
                  "dipc-msgtype": str(msgtype), "dipc-data": data}
-        res=self._do_post("rw/dipc/" + target_queue + "?action=dipc-send", payload)
+        res=self._do_post("rw/dipc/" + target_queue, payload)
     
-    def get_ipc_queue(self, queue_name: str) -> Any:
+    def get_ipc_queue(self, queue_name: str) -> Any:#TODO: test this change
         """
         Get the IPC queue
 
         :param queue_name: The name of the queue
         """
-        res=self._do_get("rw/dipc/" + queue_name + "?action=dipc-read")
+        res=self._do_get("rw/dipc/" + queue_name)
         return res
     
-    def try_create_ipc_queue(self, queue_name: str, queue_size: int=4440, max_msg_size: int=444) -> bool:
+    def try_create_ipc_queue(self, queue_name: str, queue_size: int=4440) -> bool: #TODO: test this change
         """
         Try creating an IPC queue. Returns True if the queue is created, False if queue already exists. Raises
         exception for all other errors.
 
         :param queue_name: The name of the new IPC queue
         :param queue_size: The buffer size of the queue
-        :param max_msg_size: The maximum message size of the queue
         :return: True if queue created, False if queue already exists
         
         """
         try:
-            payload={"dipc-queue-name": queue_name, "dipc-queue-size": str(queue_size), "dipc-max-msg-size": str(max_msg_size)}
-            self._do_post("rw/dipc?action=dipc-create", payload)
+            payload={"dipc-queue-name": queue_name, "dipc-queue-size": str(queue_size)}
+            self._do_post("rw/dipc", payload)
             return True
         except ABBException as e:
             if e.code==-1073445879:
                 return False
             raise
     
-    def request_rmmp(self, timeout: float=5):
+    def request_rmmp(self, timeout: float=5):#TODO: Figure this out
         """
         Request Remote Mastering. Required to alter pers variables in manual control mode. The teach pendant
         will prompt to enable remote mastering, and the user must confirm. Once remote mastering is enabled,
@@ -862,7 +861,7 @@ class RWS:
             time.sleep(0.25)
         raise Exception("User did not grant remote access")
     
-    def poll_rmmp(self):
+    def poll_rmmp(self): #TODO: Figure this out
         """
         Poll rmmp to maintain remote mastering. Call periodically after rmmp enabled using request_rmmp()
         """
@@ -930,11 +929,11 @@ class RWS:
         The `handler` parameter will be called on each event from the controller. The passed parameter will
         have the following type:
 
-        * Controller State: :class:`.ControllerState`
+        * Controller State: :class:`.ControllerState` #TODO: Does this still work? The docs seem like it doesn't
         * Operational Mode: :class:`.OperationalMode`
         * Execution State: :class:`.RAPIDExecutionState`
         * Variable: :class:`.PersVar`
-        * IPC Queue: :class:`.IpcMessage`
+        * IPC Queue: :class:`.IpcMessage`#TODO: Does this still work? The docs seem like it doesn't
         * Event Log: :class:`.EventLogEntry`
         * Signal: :class:`.Signal`
         
