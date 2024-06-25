@@ -460,7 +460,7 @@ class RWS:
             var1 = f"{task}/{var}"
         else:
             var1 = var
-        res_json = self._do_get("rw/rapid/symbol/data/RAPID/" + var1 +"/data")
+        res_json = self._do_get("rw/rapid/symbol/RAPID/" + var1 +"/data")
         state = res_json["state"][0]["value"]
         return state
     
@@ -477,7 +477,7 @@ class RWS:
             var1 = f"{task}/{var}"
         else:
             var1 = var
-        res=self._do_post("rw/rapid/symbol/data/RAPID/" + var1 + "/data", payload)
+        res=self._do_post("rw/rapid/symbol/RAPID/" + var1 + "/data", payload)
         
     def read_file(self, filename: str) -> bytes:
         """
