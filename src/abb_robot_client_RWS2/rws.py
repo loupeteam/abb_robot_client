@@ -568,13 +568,16 @@ class RWS:
         """
         o = {}
         res_json = self._do_get("rw/rapid/tasks")
-        state = res_json["state"]
+        state = res_json["_embedded"]["resources"]
                 
         for s in state:
-            name=s["name"]
-            type_=s["type"]
-            taskstate=s["taskstate"]
-            excstate=s["excstate"]            
+            try:
+                name=s["name"]
+                type_=s["type"]
+                taskstate=s["taskstate"]
+                excstate=s["excstate"]            
+            except:
+                continue
             try:
                 active=s["active"] == "On"
             except:
