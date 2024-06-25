@@ -201,6 +201,7 @@ class RWS:
             password = 'robotics'
         self.auth=requests.auth.HTTPBasicAuth(username, password) #RWS 2.0 requires basic auth
         self._session=requests.Session()
+        # self._session=requests.Session(cert_reqs= 'CERT_NONE')
         self._rmmp_session=None
         self._rmmp_session_t=None
         
@@ -909,17 +910,49 @@ class RWS:
        
         return state["status"] == "GRANTED"
 
+    def request_edit_mastership(self):
+        """
+        Request mastership on edit domain
+        """
+        self._do_post('rw/mastership/edit/request')
+
+    def request_motion_mastership(self):
+        """
+        Request mastership on motion domain
+        """
+        self._do_post('rw/mastership/motion/request')
+
     def request_mastership(self):
         """
-        Request mastership on edit and motion domains
+        Request mastership on both edit and motion domains
         """
         self._do_post('rw/mastership/request')
 
+    def release_edit_mastership(self):
+        """
+        Release mastership on edit and motion domains
+        """
+        self._do_post('rw/mastership/edit/release')
+    def release_motion_mastership(self):
+        """
+        Release mastership on edit and motion domains
+        """
+        self._do_post('rw/mastership/motion/release')
     def release_mastership(self):
         """
         Release mastership on edit and motion domains
         """
         self._do_post('rw/mastership/release')
+
+    def check_edit_mastership(self) -> bool:
+        res_json=self._do_get(f"rw/mastership/edit")
+        state = res_json["state"][0]
+        return "mastershipheldbyme" in state and state["mastershipheldbyme"]=="TRUE"
+
+    def check_motion_mastership(self) -> bool:
+        res_json=self._do_get(f"rw/mastership/motion")
+        state = res_json["state"][0]
+        return "mastershipheldbyme" in state and state["mastershipheldbyme"]=="TRUE"
 
     def subscribe(self, resources: List[SubscriptionResourceRequest], handler: Callable[[Any],None]) -> "RWSSubscription":
         """
