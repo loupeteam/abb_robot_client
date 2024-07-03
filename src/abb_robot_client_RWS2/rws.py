@@ -201,7 +201,6 @@ class RWS:
             password = 'robotics'
         self.auth=requests.auth.HTTPBasicAuth(username, password) #RWS 2.0 requires basic auth
         self._session=requests.Session()
-        # self._session=requests.Session(cert_reqs= 'CERT_NONE')
         self._rmmp_session=None
         self._rmmp_session_t=None
         
@@ -320,7 +319,7 @@ class RWS:
         """
         res=self._do_post("rw/rapid/execution/resetpp") 
 
-    def get_ramdisk_path(self) -> str: #TODO: I have know idea what this is for or how to replicate it
+    def get_ramdisk_path(self) -> str: #
         """
         Get the path of the RAMDISK variable on the controller
 
@@ -374,53 +373,53 @@ class RWS:
         state = res_json["state"][0]
         return state["opmode"]
     
-    def get_digital_io(self, signal: str, network: str='Local', unit: str='DRV_1') -> int:#
+    def get_digital_io(self, signal: str, network: str='Local', unit: str='DrvSys') -> int:#
         """
         Get the value of a digital IO signal.
 
         :param signal: The name of the signal
         :param network: The network the signal is on. The default `Local` will work for most signals.
-        :param unit: The drive unit of the signal. The default `DRV_1` will work for most signals.
+        :param unit: The drive unit of the signal. The default `DrvSys` will work for most signals.
         :return: The value of the signal. Typically 1 for ON and 0 for OFF
         """
         res_json = self._do_get("rw/iosystem/signals/" + network + "/" + unit + "/" + signal)
         state = res_json["_embedded"]["resources"][0]["lvalue"]
         return int(state)
     
-    def set_digital_io(self, signal: str, value: Union[bool,int], network: str='Local', unit: str='DRV_1'): #TODO: Change defaults?
+    def set_digital_io(self, signal: str, value: Union[bool,int], network: str='Local', unit: str='DrvSys'): #
         """
         Set the value of an digital IO signal.
 
         :param value: The value of the signal. Bool or bool convertible input
         :param signal: The name of the signal
         :param network: The network the signal is on. The default `Local` will work for most signals.
-        :param unit: The drive unit of the signal. The default `DRV_1` will work for most signals.
+        :param unit: The drive unit of the signal. The default `DrvSys` will work for most signals.
         """
         lvalue = '1' if bool(value) else '0'
         payload={'lvalue': lvalue}
         res=self._do_post("rw/iosystem/signals/" + network + "/" + unit + "/" + signal + "set-value", payload)
 
-    def get_analog_io(self, signal: str, network: str='Local', unit: str='DRV_1') -> float:
+    def get_analog_io(self, signal: str, network: str='Local', unit: str='DrvSys') -> float: #TODO: This is untested
         """
         Get the value of an analog IO signal.
 
         :param signal: The name of the signal
         :param network: The network the signal is on. The default `Local` will work for most signals.
-        :param unit: The drive unit of the signal. The default `DRV_1` will work for most signals.
+        :param unit: The drive unit of the signal. The default `DrvSys` will work for most signals.
         :return: The value of the signal
         """
         res_json = self._do_get("rw/iosystem/signals/" + network + "/" + unit + "/" + signal)
         state = res_json["_embedded"]["resources"][0]["lvalue"]
         return float(state)
     
-    def set_analog_io(self, signal: str, value: Union[int,float], network: str='Local', unit: str='DRV_1'):#TODO: Change defaults?
+    def set_analog_io(self, signal: str, value: Union[int,float], network: str='Local', unit: str='DrvSys'): #TODO: This is untested
         """
         Set the value of an analog IO signal.
 
         :param value: The value of the signal
         :param signal: The name of the signal
         :param network: The network the signal is on. The default `Local` will work for most signals.
-        :param unit: The drive unit of the signal. The default `DRV_1` will work for most signals.
+        :param unit: The drive unit of the signal. The default `DrvSys` will work for most signals.
         """
         payload={"mode": "value",'lvalue': value}
         res=self._do_post("rw/iosystem/signals/" + network + "/" + unit + "/" + signal + "/set-value", payload)
@@ -479,7 +478,7 @@ class RWS:
             var1 = var
         res=self._do_post("rw/rapid/symbol/RAPID/" + var1 + "/data", payload)
         
-    def read_file(self, filename: str) -> bytes:
+    def read_file(self, filename: str) -> bytes:#
         """
         Read a file off the controller
 
@@ -508,7 +507,7 @@ class RWS:
             raise Exception(res.reason)
         res.close()
 
-    def delete_file(self, filename: str):
+    def delete_file(self, filename: str):#
         """
         Delete a file on the controller
 
@@ -518,7 +517,7 @@ class RWS:
         res=self._session.delete(url, auth=self.auth, verify=False, headers={"Accept":"application/hal+json;v=2.0"})
         res.close()
 
-    def list_files(self, path: str) -> List[str]:
+    def list_files(self, path: str) -> List[str]:#
         """
         List files at a path on a controller
 
@@ -526,10 +525,10 @@ class RWS:
         :return: The filenames in the path
         """
         res_json = self._do_get("fileservice/" + str(path) + "", verify=False, headers={"Accept":"application/hal+json;v=2.0"})
-        state = res_json["state"]
-        return [f["_title"] for f in state]
+        resources = res_json["_embedded"]["resources"]
+        return [f["_title"] for f in resources]
 
-    def read_event_log(self, elog: int=0) -> List[EventLogEntry]:#TODO: this matches the doc spec but postman isn't returning some of these members...
+    def read_event_log(self, elog: int=0) -> List[EventLogEntry]:#
         """
         Read the controller event log
 
@@ -1025,7 +1024,7 @@ class RWS:
                 else:
                     signal = r.param["signal"]
                     network = r.param.get("network", "Local")
-                    unit = r.param.get("unit", "DRV_1")
+                    unit = r.param.get("unit", "DrvSys")
                 payload[f"{payload_ind}"] = f'/rw/iosystem/signals/{network}/{unit}/{signal};state'
             else:
                 raise Exception("Invalid resource type")
@@ -1082,6 +1081,7 @@ class RWSSubscription:
     """
     def __init__(self, ws_url, header, handler):
         self.handler = handler
+                payload[f"{payload_ind}"] = f"/rw/rapid/symbol/{var1}/data;value" #TODO: test this change
 
         self._signal_re = re.compile(r'<a\s+href="/rw/iosystem/signals/([^"]+);state"\s+rel="self"/?>.*<span\s+class="lvalue">([^<]+)<')
         self._pers_re = re.compile(r'<a\s+href="/rw/rapid/symbol/data/RAPID/([^"]+);value"\s+rel="self"/?>.*<span\s+class="value">([^<]+)<')
