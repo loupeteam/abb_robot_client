@@ -976,11 +976,11 @@ class RWS:
         The `handler` parameter will be called on each event from the controller. The passed parameter will
         have the following type:
 
-        * Controller State: :class:`.ControllerState` #TODO: Does this still work? The docs seem like it doesn't
+        * Controller State: :class:`.ControllerState`
         * Operational Mode: :class:`.OperationalMode`
         * Execution State: :class:`.RAPIDExecutionState`
         * Variable: :class:`.PersVar`
-        * IPC Queue: :class:`.IpcMessage`#TODO: Does this still work? The docs seem like it doesn't
+        * IPC Queue: :class:`.IpcMessage`
         * Event Log: :class:`.EventLogEntry`
         * Signal: :class:`.Signal`
         
@@ -1032,9 +1032,12 @@ class RWS:
 
         payload["resources"] = [f"{i+1}" for i in range(payload_ind)]
 
+        test_str = "resources=panel&panel=/rw/panel/ctrl-state&panel-p=1"
                 
-        url="/".join([self.base_url, "subscription"]) + "?json=1"
-        res1=self._session.post(url, data=payload, auth=self.auth)
+        url="/".join([self.base_url, "subscription"])
+        # res1=self._do_post("rw/rapid/execution/start", payload)
+        print(f"subscribnig to url: {url}, with payload: {test_str}")
+        res1=self._session.post(url, data=test_str, auth=self.auth, verify=False, headers={"Accept":"application/hal+json;v=2.0","Content-Type":"application/x-www-form-urlencoded;v=2.0"})
         try:
             res=self._process_response(res1)
         finally:
@@ -1049,7 +1052,8 @@ class RWS:
         ws_url = self.base_url.replace("http:","ws:") + m.group(1)
         
         cookie = f"ABBCX={self._session.cookies['ABBCX']}"
-        header={'Cookie': cookie, 'Authorization': self.auth.build_digest_header("GET", ws_url)}
+        header={'Cookie': cookie, 'Authorization': self.auth.build_basic_header("GET", ws_url)}
+        # self.auth=requests.auth.HTTPBasicAuth(username, password) #RWS 2.0 requires basic auth
 
         return RWSSubscription(ws_url, header, handler)
 
@@ -1081,7 +1085,6 @@ class RWSSubscription:
     """
     def __init__(self, ws_url, header, handler):
         self.handler = handler
-                payload[f"{payload_ind}"] = f"/rw/rapid/symbol/{var1}/data;value" #TODO: test this change
 
         self._signal_re = re.compile(r'<a\s+href="/rw/iosystem/signals/([^"]+);state"\s+rel="self"/?>.*<span\s+class="lvalue">([^<]+)<')
         self._pers_re = re.compile(r'<a\s+href="/rw/rapid/symbol/data/RAPID/([^"]+);value"\s+rel="self"/?>.*<span\s+class="value">([^<]+)<')
