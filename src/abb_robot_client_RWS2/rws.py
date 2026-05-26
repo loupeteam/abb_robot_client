@@ -335,7 +335,6 @@ class RWS:
         :return: The RAPID execution state
         """
         res_json = self._do_get("rw/rapid/execution")
-        print(res_json)
         state = res_json["state"][0]
         ctrlexecstate=state["ctrlexecstate"]
         cycle=state["cycle"]
